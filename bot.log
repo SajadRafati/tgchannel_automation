@@ -1,0 +1,164 @@
+2026-11-02 19:45:28,145 INFO started
+2026-11-02 19:45:49,196 ERROR scrape alborznet1400 failed: HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by ConnectTimeoutError(<HTTPSConnection(host='t.me', port=443) at 0x211e2b46120>, 'Connection to t.me timed out. (connect timeout=30)'))
+2026-11-02 19:45:49,204 INFO Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-11-02 19:45:49,204 INFO Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-11-02 19:45:49,205 INFO Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-11-02 19:45:49,205 INFO Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-11-02 19:45:49,207 INFO Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-11-02 19:45:49,219 INFO Added job "publish" to job store "default"
+2026-11-02 19:45:49,219 INFO Added job "publish" to job store "default"
+2026-11-02 19:45:49,220 INFO Added job "publish" to job store "default"
+2026-11-02 19:45:49,220 INFO Added job "publish" to job store "default"
+2026-11-02 19:45:49,220 INFO Added job "poll" to job store "default"
+2026-11-02 19:45:49,220 INFO Scheduler started
+2026-11-02 19:48:24,464 INFO started
+2026-11-02 19:48:25,330 INFO collected 1 new posts
+2026-11-02 19:48:25,349 INFO AFC is enabled with max remote calls: 10.
+2026-11-02 19:48:29,967 INFO HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent "HTTP/1.1 503 Service Unavailable"
+2026-11-02 19:48:29,968 ERROR classify failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-11-02 19:48:29,969 INFO AFC is enabled with max remote calls: 10.
+2026-11-02 19:48:32,249 INFO HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent "HTTP/1.1 503 Service Unavailable"
+2026-11-02 19:48:32,254 ERROR classify failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-11-02 19:48:32,255 INFO AFC is enabled with max remote calls: 10.
+2026-11-02 19:58:25,733 ERROR classify failed: Server disconnected without sending a response.
+2026-11-02 19:58:25,737 INFO AFC is enabled with max remote calls: 10.
+20:04:24 INFO    === started (TEST mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+20:04:28 INFO    Telegram bot OK: @royalpstbot
+20:04:28 INFO    Startup catch-up...
+20:04:30 INFO    crawl alborznet1400      last_id=9147 | new=1 dup=0
+20:09:02 INFO    AI [gemini-3.8-flash]: 1 posts -> 1 queued, 0 rejected
+20:09:06 INFO    queue: queued=1
+20:09:07 INFO    POSTED id=1 | 🌐اعلام نتایج پنجمین دوره طرح نیروی انسانی وزارت بهداشت ۱۴۰۵ 
+20:09:17 INFO    TEST: publishing every 2 min, polling every 1 min
+20:10:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:10:18 INFO    queue: posted=1
+20:11:17 INFO    Publish slot: queue empty, nothing to post.
+20:11:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:11:18 INFO    queue: posted=1
+20:12:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:12:18 INFO    queue: posted=1
+20:13:17 INFO    Publish slot: queue empty, nothing to post.
+20:13:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:13:18 INFO    queue: posted=1
+20:14:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:14:18 INFO    queue: posted=1
+20:15:17 INFO    Publish slot: queue empty, nothing to post.
+20:15:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:15:18 INFO    queue: posted=1
+20:16:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:16:18 INFO    queue: posted=1
+20:17:17 INFO    Publish slot: queue empty, nothing to post.
+20:17:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:17:18 INFO    queue: posted=1
+20:18:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:18:18 INFO    queue: posted=1
+20:19:17 INFO    Publish slot: queue empty, nothing to post.
+20:19:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:19:18 INFO    queue: posted=1
+20:20:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:20:18 INFO    queue: posted=1
+20:21:17 INFO    Publish slot: queue empty, nothing to post.
+20:21:18 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:21:18 INFO    queue: posted=1
+20:21:23 INFO    stopped
+20:21:28 INFO    === started (TEST mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+20:21:29 INFO    Telegram bot OK: @royalpstbot
+20:21:29 INFO    Startup catch-up...
+20:21:30 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:21:30 INFO    queue: posted=1
+20:21:30 INFO    TEST: publishing every 2 min, polling every 1 min
+20:22:30 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:22:30 INFO    queue: posted=1
+20:23:30 INFO    Publish slot: queue empty, nothing to post.
+20:23:30 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+20:23:30 INFO    queue: posted=1
+20:24:29 INFO    stopped
+08:23:17 INFO    === started (NORMAL mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+08:23:37 ERROR   Cannot reach Telegram API (VPN/proxy on?): HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot9065742780:AAEyLe6p8DnaN0jBz7
+08:23:37 INFO    Startup catch-up...
+08:23:57 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by ConnectTimeoutErr
+08:23:57 INFO    queue: posted=1
+08:23:57 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 5 min
+08:26:13 INFO    === started (NORMAL mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+08:26:33 ERROR   Cannot reach Telegram API (VPN/proxy on?): HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot9065742780:AAEyLe6p8DnaN0jBz7
+08:26:33 INFO    Startup catch-up...
+08:26:33 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:26:33 INFO    queue: posted=1
+08:26:33 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 5 min
+08:27:15 INFO    === started (NORMAL mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+08:27:16 INFO    Telegram bot OK: @royalpstbot
+08:27:16 INFO    Startup catch-up...
+08:27:17 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:27:17 INFO    queue: posted=1
+08:27:17 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 5 min
+08:28:57 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:28:57 INFO    queue: posted=1
+08:30:27 INFO    === started (NORMAL mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+08:30:27 INFO    Telegram bot OK: @royalpstbot
+08:30:27 INFO    Startup catch-up...
+08:30:28 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:30:28 INFO    queue: posted=1
+08:30:28 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 5 min
+08:30:55 INFO    === started (NORMAL mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+08:30:55 INFO    Telegram bot OK: @royalpstbot
+08:30:55 INFO    Startup catch-up...
+08:30:56 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:30:56 INFO    queue: posted=1
+08:30:56 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 5 min
+08:31:34 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:31:34 INFO    queue: posted=1
+08:32:17 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:32:17 INFO    queue: posted=1
+08:33:20 INFO    stopped
+08:33:57 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:33:57 INFO    queue: posted=1
+08:35:29 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:35:29 INFO    queue: posted=1
+08:36:34 INFO    crawl alborznet1400      last_id=9147 | new=0 dup=0
+08:36:34 INFO    queue: posted=1
+08:38:16 INFO    === started (NORMAL mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+08:38:36 ERROR   Cannot reach Telegram API (VPN/proxy on?): HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot9065742780:AAEyLe6p8DnaN0jBz7
+08:38:36 INFO    Startup catch-up...
+08:38:56 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by ConnectTimeoutErr
+08:38:56 INFO    queue: posted=1
+08:38:56 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 60 min
+09:00:00 INFO    Publish slot: queue empty, nothing to post.
+09:32:18 INFO    === started (NORMAL mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+09:32:19 INFO    Telegram bot OK: @royalpstbot
+09:32:19 INFO    Startup catch-up...
+09:32:20 INFO    crawl alborznet1400      last_id=9149 | new=2 dup=0
+09:32:21 WARNING [gemini-3.8-flash] Google overloaded (503) -> skipping until 09:34:20
+09:32:21 ERROR   [gemini-3.8-flash-lite] API error 404: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-3.8-flash-lite is not found for API version v1beta, or is not supported for generateC -> skipping for 1h (check model name/key)
+09:32:21 INFO    queue: new=2
+09:32:21 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 60 min
+10:32:41 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by ConnectTimeoutErr
+10:32:44 ERROR   Cannot reach Gemini (VPN?): [WinError 10061] No connection could be made because the target machine actively refused it
+10:32:44 INFO    queue: new=2
+11:32:26 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by SSLError(SSLEOFEr
+11:32:31 ERROR   Cannot reach Gemini (VPN?): [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1147)
+11:32:31 INFO    queue: new=2
+12:32:26 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by SSLError(SSLEOFEr
+12:32:31 ERROR   Cannot reach Gemini (VPN?): [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1147)
+12:32:31 INFO    queue: new=2
+13:00:00 WARNING Publish slot: nothing classified yet (2 unclassified). Owed slots=1, will post when AI is back.
+13:32:41 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by ConnectTimeoutErr
+13:32:43 ERROR   Cannot reach Gemini (VPN?): [WinError 10061] No connection could be made because the target machine actively refused it
+13:32:43 INFO    queue: new=2
+14:32:41 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by ConnectTimeoutErr
+14:32:43 ERROR   Cannot reach Gemini (VPN?): [WinError 10061] No connection could be made because the target machine actively refused it
+14:32:43 INFO    queue: new=2
+15:32:41 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by ConnectTimeoutErr
+15:32:43 ERROR   Cannot reach Gemini (VPN?): [WinError 10061] No connection could be made because the target machine actively refused it
+15:32:43 INFO    queue: new=2
+16:32:41 ERROR   crawl alborznet1400 failed (t.me unreachable? VPN/proxy): HTTPSConnectionPool(host='t.me', port=443): Max retries exceeded with url: /s/alborznet1400 (Caused by ConnectTimeoutErr
+16:32:43 ERROR   Cannot reach Gemini (VPN?): [WinError 10061] No connection could be made because the target machine actively refused it
+16:32:43 INFO    queue: new=2
+17:35:15 INFO    === started (NORMAL mode) | models=['gemini-3.8-flash', 'gemini-3.8-flash-lite'] ===
+17:35:15 INFO    Telegram bot OK: @royalpstbot
+17:35:15 INFO    Startup catch-up...
+17:35:16 INFO    crawl alborznet1400      last_id=9154 | new=5 dup=0
+17:35:18 WARNING [gemini-3.8-flash] Google overloaded (503) -> skipping until 17:37:16
+17:35:18 ERROR   [gemini-3.8-flash-lite] API error 404: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'models/gemini-3.8-flash-lite is not found for API version v1beta, or is not supported for generateC -> skipping for 1h (check model name/key)
+17:35:18 INFO    queue: new=7
+17:35:18 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 60 min
+17:50:50 INFO    stopped
