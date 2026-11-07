@@ -162,3 +162,60 @@
 17:35:18 INFO    queue: new=7
 17:35:18 INFO    Publish times: 09:00, 13:00, 18:00, 21:00 | polling every 60 min
 17:50:50 INFO    stopped
+11-07 17:54:47 INFO    === started | posts/24h: 3-5 | window=9-23 | max age=24h ===
+11-07 17:54:47 INFO    Dashboard: http://127.0.0.1:8080
+11-07 17:54:49 INFO    Connection to Telegram is UP (VPN on) -> resetting AI state
+11-07 17:54:50 INFO    Telegram bot OK: @royalpstbot
+11-07 17:54:50 INFO    Expired 7 old posts
+11-07 17:54:51 INFO    crawl alborznet1400      last_id=9174 | new=7 dup=1
+11-07 17:55:46 INFO    AI [gemini-3.8-flash]: 7 posts -> 6 queued, 1 rejected
+11-07 17:55:51 INFO    24h count=1, gap ok -> posting newest
+11-07 17:55:52 INFO    POSTED id=14 | 🌐برای تعویض پلاک نیازی به مراجعه به مرکز قبلی نیست  👮‍♂️رئیس
+11-07 17:55:52 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 17:59:00 WARNING Telegram unreachable (VPN off?) -> offline mode: no crawl/post, existing queue kept
+11-07 17:59:00 WARNING 5 post(s) ready but Telegram unreachable. Will post when VPN is back.
+11-07 17:59:00 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:02:00 WARNING 5 post(s) ready but Telegram unreachable. Will post when VPN is back.
+11-07 18:02:00 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:05:00 WARNING 5 post(s) ready but Telegram unreachable. Will post when VPN is back.
+11-07 18:05:00 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:08:00 WARNING 5 post(s) ready but Telegram unreachable. Will post when VPN is back.
+11-07 18:08:00 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:10:53 INFO    Connection to Telegram is UP (VPN on) -> resetting AI state
+11-07 18:10:54 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:10:55 INFO    24h count=2 | last post 15 min ago, next allowed in 45 min (queued=5)
+11-07 18:10:55 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:13:55 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:13:55 INFO    24h count=2 | last post 18 min ago, next allowed in 42 min (queued=5)
+11-07 18:13:55 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:16:55 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:16:56 INFO    24h count=2 | last post 21 min ago, next allowed in 39 min (queued=5)
+11-07 18:16:56 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:19:55 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:19:56 INFO    24h count=2 | last post 24 min ago, next allowed in 36 min (queued=5)
+11-07 18:19:56 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:22:54 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:22:55 INFO    24h count=2 | last post 27 min ago, next allowed in 33 min (queued=5)
+11-07 18:22:55 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:25:55 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:25:56 INFO    24h count=2 | last post 30 min ago, next allowed in 30 min (queued=5)
+11-07 18:25:56 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:28:54 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:28:55 INFO    24h count=2 | last post 33 min ago, next allowed in 27 min (queued=5)
+11-07 18:28:55 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:31:54 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:31:55 INFO    24h count=2 | last post 36 min ago, next allowed in 24 min (queued=5)
+11-07 18:31:55 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:34:57 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:34:59 INFO    24h count=2 | last post 39 min ago, next allowed in 21 min (queued=5)
+11-07 18:34:59 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:37:55 INFO    crawl alborznet1400      last_id=9174 | new=0 dup=0
+11-07 18:37:56 INFO    24h count=2 | last post 42 min ago, next allowed in 18 min (queued=5)
+11-07 18:37:56 INFO    queue: expired=7 posted=1 queued=5 rejected=1
+11-07 18:40:54 INFO    crawl alborznet1400      last_id=9177 | new=3 dup=0
+11-07 18:41:13 INFO    AI [gemini-3.8-flash]: 3 posts -> 3 queued, 0 rejected
+11-07 18:41:18 INFO    24h count=2 | last post 45 min ago, next allowed in 15 min (queued=8)
+11-07 18:41:18 INFO    queue: expired=7 posted=1 queued=8 rejected=1
+11-07 18:43:54 INFO    crawl alborznet1400      last_id=9177 | new=0 dup=0
+11-07 18:43:55 INFO    24h count=2 | last post 48 min ago, next allowed in 12 min (queued=8)
+11-07 18:43:55 INFO    queue: expired=7 posted=1 queued=8 rejected=1
