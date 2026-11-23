@@ -1,19 +1,21 @@
 {
-  "sources": ["alborznet1400"],
+  "sources": [
+    "alborznet1400"
+  ],
   "target": "@Royalcnt",
   "footer": "@Royalcnt",
   "proxy": null,
-
-  "models": ["gemini-3.8-flash", "gemini-3.8-flash-lite"],
+  "models": [
+    "gemini-3.8-flash",
+    "gemini-3.8-flash-lite"
+  ],
   "batch_size": 10,
   "ai_gap_seconds": 4,
   "rule_after_minutes": 20,
-
   "poll_minutes": 3,
   "backfill_hours": 24,
   "max_age_hours": 24,
   "max_pages": 5,
-
   "min_posts_per_day": 3,
   "max_posts_per_day": 5,
   "gap_below_min_minutes": 60,
@@ -22,6 +24,15 @@
   "window_end": 23,
   "fallback_from_hour": 17,
   "fallback_max_age_hours": 36,
-
-  "dashboard_port": 8080
+  "dashboard_port": 8080,
+  "pace": {
+    "drain_hours": 6,
+    "keepup": 0.7,
+    "min_gap_minutes": 20,
+    "max_per_hour": 3,
+    "hard_cap_per_day": 16,
+    "rate_window_hours": 3
+  },
+  "dup_similarity": 0.7,
+  "dup_lookback_hours": 72
 }

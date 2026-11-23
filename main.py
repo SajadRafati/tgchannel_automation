@@ -102,9 +102,38 @@ def norm_fa(s):
     s = s.replace("ي", "ی").replace("ك", "ک").replace("\u200c", " ")
     return re.sub(r"\s+", " ", s)
 
+LINK_RE = re.compile(r"https?://|t\.me/|\]\(|www\.")
+EDU_PHRASES = ["چگونه", "نحوه ", "آموزش تصویری", "آموزش ثبت", "راهنمای ثبت", "راهنمای گام"]
+
+def is_link_heavy(text):
+    """True for link directories / posts whose value is the links, not the text."""
+    lines = [l for l in text.splitlines() if l.strip()]
+    if not lines:
+        return True
+    link_lines = sum(1 for l in lines if LINK_RE.search(l))
+    n_links = len(re.findall(r"https?://|t\.me/", text))
+    if n_links >= 3 and link_lines / len(lines) >= 0.5:
+        return True
+    body = re.sub(r"\s+", "", "".join(l for l in lines if not LINK_RE.search(l)))
+    return len(body) < 40            # almost nothing left once links are removed
+
+def drop_junk():
+    """Reject link directories before they reach Gemini or the channel."""
+    n = 0
+    for rid, text in db.execute(
+            "SELECT id,text FROM q WHERE status IN ('new','queued')").fetchall():
+        if is_link_heavy(text):
+            db.execute("UPDATE q SET status='rejected', approved=0, method='filter' "
+                       "WHERE id=?", (rid,))
+            log.info("REJECTED link-list/low-text post id=%s | %s", rid,
+                     text.replace("\n", " ")[:50])
+            n += 1
+    db.commit()
+    return n
+
 def rule_classify(text):
     t = norm_fa(text)
-    if any(w in t for w in AD_WORDS):
+    if is_link_heavy(text) or any(w in t for w in AD_WORDS + EDU_PHRASES):
         return False
     return len(t) >= 40 and any(w in t for w in KEEP_WORDS)
 
@@ -126,10 +155,28 @@ def rule_fallback():
                 len(rows), kept, len(rows) - kept)
 
 # ---------------- Gemini with fallback / backoff ----------------
-PROMPT = """You classify Persian Telegram posts. For each post decide keep=true ONLY if it is:
-- an official news/announcement (circulars, price changes, rules, important events), or
-- a registration/sign-up announcement (e.g. car sales registration, lottery, deadlines).
-Ads, greetings, chit-chat, promos, polls and generic content => keep=false.
+PROMPT = """You are an editor for a Persian Telegram channel that publishes ONLY time-sensitive
+news and registration announcements for the general reader. Posts below show links as
+markdown: [label](url). For each post decide keep=true or keep=false.
+
+keep=true ONLY if the post itself announces something specific and current, such as:
+- an official circular/announcement, rule change, price change, important event, or
+- a registration / sign-up / lottery announcement with its own details (dates, conditions, product).
+
+keep=false if ANY of these is true:
+- The post is mostly a list or directory of links (portals, websites, "links for X"),
+  or more than about half of its lines are links. Its value is the links, not the text.
+- It is educational or a guide: how-to, tutorial, tips, explanation of a process, general
+  reference that is not tied to a specific new event.
+- It has no concrete news/event/deadline of its own, and only points readers elsewhere.
+- Ads, promos, greetings, chit-chat, polls, channel self-promotion, generic content.
+
+Example to REJECT (keep=false): a post titled "link for registration of new university
+students" followed by six lines of links to different university portals.
+Example to KEEP (keep=true): a car-maker circular announcing a lottery sale with its
+registration start and end dates.
+
+When unsure, choose keep=false.
 Return ONLY a JSON array with one entry per post: [{"id": <int>, "keep": true|false}]
 
 Posts:
@@ -337,13 +384,115 @@ def publish_row(row, tag=""):
     log.info("POSTED%s id=%s | %s", tag, rid, body.replace("\n", " ")[:60])
     return True
 
-def channel_recent():
-    """Timestamps of recent posts in YOUR channel (includes manual posts)."""
+# ---------------- manual-post / duplicate guard ----------------
+db.execute("CREATE TABLE IF NOT EXISTS mine(msg_id INTEGER PRIMARY KEY, ts REAL, text TEXT)")
+db.commit()
+DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
+_mine_sync = 0.0
+_mine_ts = []
+
+def body_of(text):
+    """Same cleaning as clean() but without the footer: drop link/mention lines."""
+    return "\n".join(l for l in text.splitlines()
+                     if not re.search(r"https?://|t\.me/|\]\(|@\w+", l))
+
+def sig(text):
+    t = norm_fa(body_of(text)).translate(DIGITS).lower()
+    words = set(re.findall(r"\w+", t))
+    return words, {w for w in words if w.isdigit()}
+
+def similar(a, b):
+    (wa, na), (wb, nb) = a, b
+    if not wa or not wb:
+        return False
+    if na and nb and not (na <= nb or nb <= na):   # different dates/prices => different news
+        return False
+    inter = len(wa & wb)
+    jac = inter / len(wa | wb)
+    cont = inter / min(len(wa), len(wb))
+    return jac >= cfg.get("dup_similarity", 0.7) or (cont >= 0.9 and min(len(wa), len(wb)) >= 8)
+
+def sync_mine(force=False):
+    """Read YOUR channel page and remember every post, manual ones included.
+    Returns timestamps of recent posts, or None if the page can't be read."""
+    global _mine_sync, _mine_ts
+    if not force and time.time() - _mine_sync < 60:
+        return _mine_ts
     try:
-        return [i["ts"] for i in fetch_page(cfg["target"].lstrip("@"))]
+        items = fetch_page(cfg["target"].lstrip("@"))
     except Exception as e:
         log.warning("Could not read your channel page, using local record: %s", str(e)[:80])
         return None
+    for it in items:
+        if it["text"]:
+            db.execute("INSERT OR REPLACE INTO mine(msg_id,ts,text) VALUES(?,?,?)",
+                       (it["id"], it["ts"], it["text"]))
+    db.execute("DELETE FROM mine WHERE ts<?",
+               (time.time() - cfg.get("dup_lookback_hours", 72) * 3600,))
+    db.commit()
+    _mine_sync = time.time()
+    _mine_ts = [i["ts"] for i in items]
+    return _mine_ts
+
+def channel_recent():
+    return sync_mine()
+
+def refs():
+    """Signatures of everything already in your channel (manual + bot posts)."""
+    since = time.time() - cfg.get("dup_lookback_hours", 72) * 3600
+    rows = db.execute("SELECT text FROM mine WHERE ts>?", (since,)).fetchall()
+    rows += db.execute("SELECT text FROM q WHERE status='posted' AND posted_at>?",
+                       (since,)).fetchall()
+    return [sig(t) for (t,) in rows if t]
+
+def is_dup(text, R):
+    s = sig(text)
+    return any(similar(s, r) for r in R)
+
+def drop_duplicates():
+    """Mark waiting posts that your channel already has (e.g. you posted it by hand)."""
+    R = refs()
+    if not R:
+        return 0
+    n = 0
+    for rid, text in db.execute(
+            "SELECT id,text FROM q WHERE status IN ('new','queued')").fetchall():
+        if is_dup(text, R):
+            db.execute("UPDATE q SET status='duplicate' WHERE id=?", (rid,))
+            log.info("DUPLICATE of a post already in your channel -> skipped id=%s | %s",
+                     rid, body_of(text).replace("\n", " ")[:50])
+            n += 1
+    db.commit()
+    return n
+
+PACE_DEFAULT = {"drain_hours": 6, "keepup": 0.7, "min_gap_minutes": 20,
+                "max_per_hour": 3, "hard_cap_per_day": 16, "rate_window_hours": 3}
+
+def pace_cfg():
+    p = dict(PACE_DEFAULT)
+    p.update(cfg.get("pace", {}))
+    return p
+
+def compute_pace(queued, now, hour_now):
+    """Smart pacing: gap shrinks with backlog AND with the arrival rate of approved posts.
+    desired posts/hour = backlog / drain_time + arrival_rate * keepup."""
+    p = pace_cfg()
+    rw = p["rate_window_hours"]
+    arrived = db.execute("SELECT COUNT(*) FROM q WHERE approved=1 AND ts>?",
+                         (now - rw * 3600,)).fetchone()[0]
+    rate = arrived / rw                                  # approved posts per hour
+    left = max(1.0, cfg["window_end"] - hour_now)        # posting hours left today
+    drain = max(1.0, min(p["drain_hours"], left))
+    want = queued / drain + rate * p["keepup"]           # posts per hour we should publish
+    if want <= 0:
+        gap = cfg["gap_normal_minutes"]
+    else:
+        gap = 60.0 / want
+    gap = max(p["min_gap_minutes"], min(cfg["gap_normal_minutes"], gap))
+    cap = cfg["max_posts_per_day"]
+    if want > 0 and gap < cfg["gap_normal_minutes"]:     # busy: allow a higher daily cap
+        cap = max(cap, p["hard_cap_per_day"])
+    return gap, cap, rate, want
 
 def smart_publish(tg_up):
     with lock:
@@ -369,26 +518,46 @@ def smart_publish(tg_up):
             count = max(count, len([t for t in ts_list if t > since]))
             if ts_list:
                 last = max(last, max(ts_list))
-        if count >= cfg["max_posts_per_day"]:
-            log.info("24h cap reached (%d/%d)", count, cfg["max_posts_per_day"])
+        need, cap, rate, want = compute_pace(queued, now, datetime.now().hour + datetime.now().minute / 60)
+        if count >= cap:
+            log.info("24h cap reached (%d/%d) | queued=%d", count, cap, queued)
             return
-        need = (cfg["gap_below_min_minutes"] if count < cfg["min_posts_per_day"]
-                else cfg["gap_normal_minutes"])
+        if count < cfg["min_posts_per_day"]:
+            need = min(need, cfg["gap_below_min_minutes"])
+        last_hour = db.execute("SELECT COUNT(*) FROM q WHERE status='posted' AND posted_at>?",
+                               (now - 3600,)).fetchone()[0]
+        if last_hour >= pace_cfg()["max_per_hour"]:
+            log.info("Hourly cap reached (%d) | queued=%d", last_hour, queued)
+            return
         gap = (now - last) / 60 if last else 10 ** 6
         if gap < need:
-            log.info("24h count=%d | last post %.0f min ago, next allowed in %.0f min "
-                     "(queued=%d)", count, gap, need - gap, queued)
+            log.info("24h=%d/%d | queued=%d arrivals=%.1f/h -> target gap %.0f min | "
+                     "last post %.0f min ago, next in %.0f min",
+                     count, cap, queued, rate, need, gap, need - gap)
             return
-        row = db.execute("SELECT id,text FROM q WHERE status='queued' "
-                         "ORDER BY ts DESC LIMIT 1").fetchone()
-        tag = ""
+        sync_mine(force=True)          # fresh look at your channel right before posting
+        drop_junk()
+        drop_duplicates()
+        R = refs()
+        row, tag = None, ""
+        for r in db.execute("SELECT id,text FROM q WHERE status='queued' "
+                            "ORDER BY ts DESC LIMIT 15").fetchall():
+            if is_dup(r[1], R):
+                db.execute("UPDATE q SET status='duplicate' WHERE id=?", (r[0],))
+                continue
+            row = r
+            break
         if not row and count < cfg["min_posts_per_day"] and h >= cfg["fallback_from_hour"]:
-            row = db.execute(
-                "SELECT id,text FROM q WHERE approved=1 AND status='expired' AND ts>? "
-                "ORDER BY ts DESC LIMIT 1",
-                (now - cfg["fallback_max_age_hours"] * 3600,)).fetchone()
-            if row:
-                tag = " (fallback: older approved item to reach daily minimum)"
+            for r in db.execute(
+                    "SELECT id,text FROM q WHERE approved=1 AND status='expired' AND ts>? "
+                    "ORDER BY ts DESC LIMIT 15",
+                    (now - cfg["fallback_max_age_hours"] * 3600,)).fetchall():
+                if is_link_heavy(r[1]) or is_dup(r[1], R):
+                    db.execute("UPDATE q SET status='duplicate' WHERE id=?", (r[0],))
+                    continue
+                row, tag = r, " (fallback: older approved item to reach daily minimum)"
+                break
+        db.commit()
         if not row:
             log.info("24h count=%d | nothing ready to post (queue empty)", count)
             return
@@ -433,7 +602,10 @@ def poll():
         with lock:
             expire_old()
             if tg_up:
+                sync_mine()
                 collect()
+                drop_junk()            # link directories: no AI needed
+                drop_duplicates()      # before AI: saves quota
             ai_ok = True
             for _ in range(10):
                 r = classify_pending()
