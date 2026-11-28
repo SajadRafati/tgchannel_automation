@@ -34,5 +34,7 @@
     "rate_window_hours": 3
   },
   "dup_similarity": 0.7,
-  "dup_lookback_hours": 72
+  "dup_lookback_hours": 72,
+  "overdue_hours": 5,
+  "min_chars": 12
 }

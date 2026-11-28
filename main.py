@@ -59,7 +59,7 @@ db.execute("""CREATE TABLE IF NOT EXISTS q(
   UNIQUE(src, msg_id))""")
 db.execute("CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)")
 for col, ddl in [("found_at", "REAL"), ("approved", "INTEGER DEFAULT 0"),
-                 ("posted_at", "REAL"), ("method", "TEXT")]:
+                 ("posted_at", "REAL"), ("method", "TEXT"), ("reason", "TEXT")]:
     try:
         db.execute(f"ALTER TABLE q ADD COLUMN {col} {ddl}")
     except sqlite3.OperationalError:
@@ -94,7 +94,15 @@ def expire_old():
 KEEP_WORDS = ["ثبت نام", "ثبتنام", "قرعه", "فروش", "بخشنامه", "اطلاعیه", "اطلاع رسانی",
               "افزایش قیمت", "کاهش قیمت", "قیمت جدید", "مهلت", "پیش فروش", "عرضه",
               "خبر فوری", "مصوبه", "تعطیل", "تمدید", "سهمیه", "یارانه", "وام",
-              "آغاز شد", "اعلام شد", "شروع ثبت"]
+              "آغاز شد", "اعلام شد", "شروع ثبت", "منتشر شد", "استخدام", "آزمون",
+              "کارت ورود", "کارت شرکت", "کارنامه", "نتایج", "نتیجه آزمون", "زمان ثبت",
+              "ثبت نام", "دعوت به همکاری", "جذب نیرو"]
+# unofficial reports / media chatter (rejected unless a strong official word is present)
+NOISE_WORDS = ["گزارش کاربران", "گزارش های دریافتی", "گزارش‌های دریافتی", "از کاربران",
+               "افت کیفیت", "کاهش سرعت", "ناپایداری", "پکت لاس", "packet loss",
+               "شایعه", "تحلیل", "گفته می شود", "نظرسنجی"]
+STRONG_WORDS = ["ثبت نام", "ثبتنام", "قرعه", "بخشنامه", "مهلت", "تمدید", "اطلاعیه",
+                "کارت ورود", "کارت شرکت", "کارنامه"]
 AD_WORDS = ["تخفیف ویژه", "کد تخفیف", "عضو شوید", "جوین شوید", "فالو کنید",
             "لایک", "تبلیغ", "سفارش دهید", "پشتیبانی"]
 
@@ -106,16 +114,14 @@ LINK_RE = re.compile(r"https?://|t\.me/|\]\(|www\.")
 EDU_PHRASES = ["چگونه", "نحوه ", "آموزش تصویری", "آموزش ثبت", "راهنمای ثبت", "راهنمای گام"]
 
 def is_link_heavy(text):
-    """True for link directories / posts whose value is the links, not the text."""
+    """True ONLY for link directories: 3+ links and half or more of the lines are links.
+    The amount of text alone is never a reason to reject (e.g. 'exam card published' + 1 link)."""
     lines = [l for l in text.splitlines() if l.strip()]
     if not lines:
-        return True
+        return False
     link_lines = sum(1 for l in lines if LINK_RE.search(l))
     n_links = len(re.findall(r"https?://|t\.me/", text))
-    if n_links >= 3 and link_lines / len(lines) >= 0.5:
-        return True
-    body = re.sub(r"\s+", "", "".join(l for l in lines if not LINK_RE.search(l)))
-    return len(body) < 40            # almost nothing left once links are removed
+    return n_links >= 3 and link_lines / len(lines) >= 0.5
 
 def drop_junk():
     """Reject link directories before they reach Gemini or the channel."""
@@ -123,61 +129,90 @@ def drop_junk():
     for rid, text in db.execute(
             "SELECT id,text FROM q WHERE status IN ('new','queued')").fetchall():
         if is_link_heavy(text):
-            db.execute("UPDATE q SET status='rejected', approved=0, method='filter' "
-                       "WHERE id=?", (rid,))
-            log.info("REJECTED link-list/low-text post id=%s | %s", rid,
+            db.execute("UPDATE q SET status='rejected', approved=0, method='filter', "
+                       "reason='link_directory' WHERE id=?", (rid,))
+            log.info("REJECTED [filter:link_directory] id=%s | %s", rid,
                      text.replace("\n", " ")[:50])
             n += 1
     db.commit()
     return n
 
 def rule_classify(text):
+    """Returns (keep, reason). Short text is NOT a reason to reject."""
     t = norm_fa(text)
-    if is_link_heavy(text) or any(w in t for w in AD_WORDS + EDU_PHRASES):
-        return False
-    return len(t) >= 40 and any(w in t for w in KEEP_WORDS)
+    if is_link_heavy(text):
+        return False, "link_directory"
+    if any(w in t for w in AD_WORDS):
+        return False, "ad_word"
+    if any(w in t for w in EDU_PHRASES):
+        return False, "educational"
+    if any(norm_fa(w) in t for w in NOISE_WORDS) and not any(w in t for w in STRONG_WORDS):
+        return False, "unofficial_report"
+    if len(t) < 12:
+        return False, "empty"
+    if any(w in t for w in KEEP_WORDS):
+        return True, "keyword"
+    return False, "no_news_keyword"
 
-def rule_fallback():
-    """Classify posts that waited too long for the AI, using keyword rules."""
-    limit = time.time() - cfg["rule_after_minutes"] * 60
-    rows = db.execute("SELECT id,text FROM q WHERE status='new' AND found_at<? "
-                      "ORDER BY ts DESC", (limit,)).fetchall()
+def rule_fallback(force=False):
+    """Classify with keyword rules. Normally for posts that waited rule_after_minutes for the
+    AI; force=True classifies the newest pending posts right now (a posting slot is due).
+    Returns number of posts queued."""
+    if force:
+        rows = db.execute("SELECT id,text FROM q WHERE status='new' "
+                          "ORDER BY ts DESC LIMIT 20").fetchall()
+    else:
+        limit = time.time() - cfg["rule_after_minutes"] * 60
+        rows = db.execute("SELECT id,text FROM q WHERE status='new' AND found_at<? "
+                          "ORDER BY ts DESC", (limit,)).fetchall()
     if not rows:
-        return
+        return 0
     kept = 0
     for rid, text in rows:
-        ok = rule_classify(text)
-        db.execute("UPDATE q SET status=?, approved=?, method='rule' WHERE id=?",
-                   ("queued" if ok else "rejected", int(ok), rid))
+        ok, why = rule_classify(text)
+        db.execute("UPDATE q SET status=?, approved=?, method='rule', reason=? WHERE id=?",
+                   ("queued" if ok else "rejected", int(ok), why, rid))
         kept += ok
+        if not ok:
+            log.info("REJECTED [rule:%s] id=%s | %s", why, rid, text.replace("\n", " ")[:50])
     db.commit()
-    log.warning("AI unavailable -> rule-based fallback: %d posts -> %d queued, %d rejected",
-                len(rows), kept, len(rows) - kept)
+    log.warning("AI unavailable -> rule-based %s: %d posts -> %d queued, %d rejected",
+                "classification (slot due)" if force else "fallback", len(rows), kept,
+                len(rows) - kept)
+    return kept
 
 # ---------------- Gemini with fallback / backoff ----------------
-PROMPT = """You are an editor for a Persian Telegram channel that publishes ONLY time-sensitive
-news and registration announcements for the general reader. Posts below show links as
+PROMPT = """You are an editor for a Persian Telegram channel that publishes ONLY official
+announcements and registration notices for the general reader. Posts below show links as
 markdown: [label](url). For each post decide keep=true or keep=false.
 
-keep=true ONLY if the post itself announces something specific and current, such as:
-- an official circular/announcement, rule change, price change, important event, or
-- a registration / sign-up / lottery announcement with its own details (dates, conditions, product).
+keep=true ONLY if the post itself is an OFFICIAL announcement by an institution, company or
+government body that readers can act on or must know, with concrete details:
+- a circular / official notice / rule or price change / official decision, or
+- a registration, sign-up, lottery, exam, recruitment or result announcement (dates, conditions, product).
 
 keep=false if ANY of these is true:
-- The post is mostly a list or directory of links (portals, websites, "links for X"),
-  or more than about half of its lines are links. Its value is the links, not the text.
-- It is educational or a guide: how-to, tutorial, tips, explanation of a process, general
-  reference that is not tied to a specific new event.
-- It has no concrete news/event/deadline of its own, and only points readers elsewhere.
+- Unofficial reports or general media news: "users report", complaints, outages or service
+  quality problems, incidents, accidents, rumors, analysis, opinion, commentary, statistics,
+  social or political news. It describes a situation but nobody official announces anything
+  and the reader has nothing to do.
+- The post is mostly a list or directory of links, or more than about half of its lines are links.
+- It is educational or a guide: how-to, tutorial, tips, explanation of a process, general reference.
+- It has no concrete announcement, event or deadline of its own.
 - Ads, promos, greetings, chit-chat, polls, channel self-promotion, generic content.
 
-Example to REJECT (keep=false): a post titled "link for registration of new university
-students" followed by six lines of links to different university portals.
-Example to KEEP (keep=true): a car-maker circular announcing a lottery sale with its
-registration start and end dates.
+Examples to REJECT (keep=false):
+- "Users report slow and unstable internet in some regions, with high ping and packet loss"
+  (a user-reported situation, not an official announcement).
+- A post titled "registration links for new university students" followed by six links.
+Examples to KEEP (keep=true):
+- A car-maker circular announcing a lottery sale with registration start and end dates.
+- "The exam entry card of Bank X recruitment test is published" (an official exam notice).
 
 When unsure, choose keep=false.
-Return ONLY a JSON array with one entry per post: [{"id": <int>, "keep": true|false}]
+Return ONLY a JSON array with one entry per post:
+[{"id": <int>, "keep": true|false, "reason": "news|registration|exam|link_directory|educational|unofficial_report|no_event|ad|other"}]
+The amount of text is NOT a reason to reject: a short headline plus one link can be an official notice.
 
 Posts:
 """
@@ -226,6 +261,11 @@ def call_ai(prompt):
                 wait = 3 * 3600 if per_day else (parse_retry(msg) or 60) + 5
                 blocked[m] = now + wait
                 log.warning("[%s] quota limit (429) -> skipping until %s", m, hhmm(blocked[m]))
+            elif code == 403 and "<html" in msg.lower():
+                blocked[m] = now + 180
+                log.warning("[%s] Google returned an HTML 403 page = network/region block of "
+                            "this IP. Check VPN exit country / that Google is routed via VPN. "
+                            "Retry in 3 min", m)
             elif code in (500, 502, 503, 504):
                 wait = min(120 * (2 ** fail_streak), 1800)
                 fail_streak += 1
@@ -263,8 +303,12 @@ def classify_pending():
             if rid not in valid:
                 continue
             ok = bool(item.get("keep"))
-            db.execute("UPDATE q SET status=?, approved=?, method='ai' WHERE id=?",
-                       ("queued" if ok else "rejected", int(ok), rid))
+            why = str(item.get("reason") or ("news" if ok else "other"))[:30]
+            db.execute("UPDATE q SET status=?, approved=?, method='ai', reason=? WHERE id=?",
+                       ("queued" if ok else "rejected", int(ok), why, rid))
+            if not ok:
+                txt = next((t for i, t in rows if i == rid), "")
+                log.info("REJECTED [ai:%s] id=%s | %s", why, rid, txt.replace("\n", " ")[:50])
             kept += ok
             rejected += (not ok)
         db.commit()
@@ -324,7 +368,7 @@ def collect():
                 for it in items:
                     top = max(top, it["id"])
                     t = it["text"]
-                    if it["id"] <= last or it["ts"] < since or not t or len(t) < 30:
+                    if it["id"] <= last or it["ts"] < since or not t or len(t) < cfg.get("min_chars", 12):
                         continue
                     try:
                         db.execute("INSERT INTO q(src,msg_id,text,hash,ts,found_at) "
@@ -349,13 +393,62 @@ def collect():
             log.exception("crawl %s crashed", ch)
 
 # ---------------- editing + publishing ----------------
+LINK_LINE = re.compile(r"https?://|t\.me/|\]\(|@\w+")
+_NOUN = (r"(?:لینک(?:[\u200c\s]*های)?|پیوند(?:[\u200c\s]*های)?|آدرس|"
+         r"وب[\u200c\s]*سایت|سایت|سامانه)")
+_POS = r"(?:زیر|ذیل|پایین|پایینی|بالا|فوق)(?![\u0600-\u06FF\u200c])"
+_GO = r"(?:کنید|نمایید|فرمایید|کنین)"
+REF_SUBS = [   # "see the link below" style sentences -> neutral wording (numbers untouched)
+    (re.compile(rf"(?:به|در)\s*{_NOUN}\s*{_POS}\s*(?:مراجعه|رجوع)\s*{_GO}"),
+     "به سامانه‌ی مربوطه مراجعه کنید"),
+    (re.compile(rf"(?:بر\s*)?روی\s*{_NOUN}\s*{_POS}\s*کلیک\s*{_GO}"),
+     "به سامانه‌ی مربوطه مراجعه کنید"),
+    (re.compile(rf"(?:از\s*طریق|با\s*استفاده\s*از|با\s*مراجعه\s*به|با\s*ورود\s*به|"
+                rf"توسط|از)\s*{_NOUN}\s*{_POS}"), "از طریق سامانه‌ی مربوطه"),
+    (re.compile(rf"{_NOUN}\s*{_POS}"), "سامانه‌ی مربوطه"),
+]
+DANGLING_RE = re.compile(r"لینک|پیوند|کلیک")
+
 def clean(text):
-    keep = []
+    """Remove link/mention lines, then fix any wording that pointed at the removed links
+    ('use the link below', a label line ending with ':' ...). Dates and numbers are never changed."""
+    items, last_ne = [], None
     for line in text.splitlines():
-        if re.search(r"https?://|t\.me/|\]\(|@\w+", line):
+        if LINK_LINE.search(line):
+            if last_ne is not None:
+                items[last_ne]["before_link"] = True
             continue
-        keep.append(line.rstrip())
-    body = re.sub(r"\n{3,}", "\n\n", "\n".join(keep)).strip()
+        items.append({"t": line.rstrip(), "before_link": False})
+        if line.strip():
+            last_ne = len(items) - 1
+    out = []
+    for it in items:
+        t = it["t"]
+        if t.strip():          # the bot never posts links, so any 'link below' wording is dangling
+            new = t
+            for rx, rep_to in REF_SUBS:
+                new = rx.sub(rep_to, new)
+            rewritten = new != t
+            if rewritten:
+                log.info("LINK-REF reworded: %s -> %s", t.strip()[:50], new.strip()[:50])
+            t = new
+            has_digit = bool(re.search(r"\d", t))
+            if it["before_link"] and t.rstrip().endswith((":", "：")):
+                core = re.sub(r"[\W_]", "", t)
+                if not rewritten and not has_digit and len(core) <= 45:
+                    log.info("LINK-REF dropped label line: %s", t.strip()[:50])
+                    continue                       # pure label for the removed links
+                t = t.rstrip().rstrip(":：").rstrip()
+            if DANGLING_RE.search(t):
+                if not has_digit:
+                    log.info("LINK-REF dropped dangling line: %s", t.strip()[:50])
+                    continue
+                t2 = re.sub(r"(?:لینک|پیوند)(?:[\u200c\s]*های)?", "سامانه", t)
+                log.warning("LINK-REF leftover reworded, please check: %s -> %s",
+                            t.strip()[:50], t2.strip()[:50])
+                t = t2
+        out.append(t)
+    body = re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
     return f"{body}\n\n{cfg['footer']}"[:4000]
 
 def send(text):
@@ -494,6 +587,32 @@ def compute_pace(queued, now, hour_now):
         cap = max(cap, p["hard_cap_per_day"])
     return gap, cap, rate, want
 
+def pick_queued(R):
+    """Newest approved post that is not already in your channel."""
+    for r in db.execute("SELECT id,text FROM q WHERE status='queued' "
+                        "ORDER BY ts DESC LIMIT 15").fetchall():
+        if is_dup(r[1], R):
+            db.execute("UPDATE q SET status='duplicate' WHERE id=?", (r[0],))
+            continue
+        return r
+    return None
+
+def pick_older(R, now):
+    """Older approved post (expired in the queue but still fresh enough)."""
+    for r in db.execute("SELECT id,text FROM q WHERE approved=1 AND status='expired' AND ts>? "
+                        "ORDER BY ts DESC LIMIT 15",
+                        (now - cfg["fallback_max_age_hours"] * 3600,)).fetchall():
+        if is_link_heavy(r[1]):
+            db.execute("UPDATE q SET status='rejected', reason='link_directory' WHERE id=?", (r[0],))
+            continue
+        if is_dup(r[1], R):
+            db.execute("UPDATE q SET status='duplicate' WHERE id=?", (r[0],))
+            continue
+        return r
+    return None
+
+ai_ok_last = True
+
 def smart_publish(tg_up):
     with lock:
         expire_old()
@@ -539,27 +658,31 @@ def smart_publish(tg_up):
         drop_junk()
         drop_duplicates()
         R = refs()
-        row, tag = None, ""
-        for r in db.execute("SELECT id,text FROM q WHERE status='queued' "
-                            "ORDER BY ts DESC LIMIT 15").fetchall():
-            if is_dup(r[1], R):
-                db.execute("UPDATE q SET status='duplicate' WHERE id=?", (r[0],))
-                continue
-            row = r
-            break
-        if not row and count < cfg["min_posts_per_day"] and h >= cfg["fallback_from_hour"]:
-            for r in db.execute(
-                    "SELECT id,text FROM q WHERE approved=1 AND status='expired' AND ts>? "
-                    "ORDER BY ts DESC LIMIT 15",
-                    (now - cfg["fallback_max_age_hours"] * 3600,)).fetchall():
-                if is_link_heavy(r[1]) or is_dup(r[1], R):
-                    db.execute("UPDATE q SET status='duplicate' WHERE id=?", (r[0],))
-                    continue
-                row, tag = r, " (fallback: older approved item to reach daily minimum)"
-                break
+        row, tag = pick_queued(R), ""
+        hours_since = gap / 60 if last else 99
+        if not row and not ai_ok_last:
+            # a slot is due and the AI is down: do not wait, classify pending posts by rules now
+            if rule_fallback(force=True):
+                drop_junk()
+                drop_duplicates()
+                R = refs()
+                row = pick_queued(R)
+                if row:
+                    tag = " (rule-classified because AI is unavailable)"
+        overdue = hours_since >= cfg.get("overdue_hours", 5)
+        if not row and ((count < cfg["min_posts_per_day"] and h >= cfg["fallback_from_hour"])
+                        or overdue):
+            row = pick_older(R, now)
+            if row:
+                tag = (" (OVERDUE %.1fh: older approved item)" % hours_since if overdue
+                       else " (fallback: older approved item to reach daily minimum)")
         db.commit()
         if not row:
-            log.info("24h count=%d | nothing ready to post (queue empty)", count)
+            pending = db.execute("SELECT COUNT(*) FROM q WHERE status='new'").fetchone()[0]
+            (log.warning if hours_since >= cfg.get("overdue_hours", 5) else log.info)(
+                "24h count=%d | last post %.1fh ago, nothing postable "
+                "(queued=0, waiting for AI=%d, AI %s)", count, hours_since, pending,
+                "up" if ai_ok_last else "DOWN")
             return
         log.info("24h count=%d, gap ok -> posting newest", count)
         publish_row(row, tag)
@@ -586,7 +709,7 @@ def check_telegram():
         log.error("Cannot reach Telegram API: %s", str(e)[:100])
 
 def poll():
-    global was_up, bot_checked
+    global was_up, bot_checked, ai_ok_last
     try:
         tg_up = reachable("https://t.me")
         if tg_up and not was_up:
@@ -615,6 +738,7 @@ def poll():
                 if r == 0:
                     break
                 time.sleep(cfg["ai_gap_seconds"])
+            ai_ok_last = ai_ok
             if not ai_ok:
                 rule_fallback()
         smart_publish(tg_up)
@@ -665,6 +789,14 @@ if __name__ == "__main__":
              cfg["min_posts_per_day"], cfg["max_posts_per_day"],
              cfg["window_start"], cfg["window_end"], cfg["max_age_hours"])
     start_dashboard()
+    if str(meta_get("refilter_v2", 0)) != "1":
+        n = db.execute("UPDATE q SET status='new', method=NULL, reason=NULL "
+                       "WHERE method='filter' AND status='rejected' AND ts>?",
+                       (time.time() - cfg["max_age_hours"] * 3600,)).rowcount
+        db.commit()
+        meta_set("refilter_v2", 1)
+        if n:
+            log.info("Re-checking %d post(s) the old low-text filter rejected", n)
     poll()
     sch = BlockingScheduler()
     sch.add_job(poll, "interval", minutes=cfg["poll_minutes"],
